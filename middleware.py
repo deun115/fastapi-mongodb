@@ -1,6 +1,6 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from db import client
+from db.db import client
 
 class MongoConnectionPoolLoggerMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
