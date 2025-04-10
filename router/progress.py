@@ -1,13 +1,13 @@
 from db.models import ProgressRequestObj
 from db.collections import progress_cache_collection
-from utils.process import execute_progress, save_execute_result
+from utils.background import progress_in_background
 from pymongo.errors import PyMongoError
-from fastapi import HTTPException, status, Response
+from fastapi import HTTPException, status, Response, BackgroundTasks
 from main import app
 
 
 @app.post("/trigger_process/")
-async def create_progress(progress: ProgressRequestObj):
+async def create_progress(progress: ProgressRequestObj, background_tasks: BackgroundTasks):
     try:
         init_res = {
             "name": progress.name,
@@ -16,8 +16,9 @@ async def create_progress(progress: ProgressRequestObj):
         }
         print("init_res", init_res)
         await progress_cache_collection.insert_one(init_res)
-        execute_res = execute_progress(progress)
-        await save_execute_result(execute_res)
+
+        background_tasks.add_task(progress_in_background, progress)
+
     except PyMongoError as e:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
     return Response({"message": "Success to register background progress"})
