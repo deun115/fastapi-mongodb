@@ -9,12 +9,23 @@ from main import app
 @app.post("/trigger_process/")
 async def create_progress(progress: ProgressRequestObj, background_tasks: BackgroundTasks):
     try:
+        existing = await progress_cache_collection.find_one({
+            "name": progress.name,
+            "status": {"$in": ["in-progress", "completed"]}
+        })
+
+        if existing:
+            return Response(
+                content={"message": f"Progress already exists for this name {progress.name}."},
+                status_code=status.HTTP_409_CONFLICT
+            )
+
         init_res = {
             "name": progress.name,
             "status": "in-progress",
             "action": progress.action
         }
-        print("init_res", init_res)
+
         await progress_cache_collection.insert_one(init_res)
 
         background_tasks.add_task(progress_in_background, progress)
