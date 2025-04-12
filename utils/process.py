@@ -1,5 +1,6 @@
 import os
 import cv2
+from pymongo import ReturnDocument
 from db.models import ProgressRequestObj
 from db.collections import progress_cache_collection
 
@@ -63,8 +64,10 @@ def execute_progress(progress: ProgressRequestObj):
 
 
 async def save_execute_result(result):
-    await progress_cache_collection.update_one(
-        {"name": result["name"]},
-        {"$set": result}
+    await progress_cache_collection.find_one_and_update(
+        filter={"name": result["name"], "status": "in-progress"},
+        update={"$set": result},
+        upsert=True,
+        return_document=ReturnDocument.AFTER
     )
     return True
