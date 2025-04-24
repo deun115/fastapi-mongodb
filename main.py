@@ -1,12 +1,14 @@
 from fastapi import FastAPI
 from db.db import connect_to_mongo, close_mongo_connection
-from middleware import MongoConnectionPoolLoggerMiddleware
+from middleware import MongoConnectionPoolLoggerMiddleware, FullOutputCaptureMiddleware
 
 from router.item import item_router
 from router.progress import progress_router
 
 app = FastAPI()
 app.add_middleware(MongoConnectionPoolLoggerMiddleware)
+app.add_middleware(FullOutputCaptureMiddleware)
+
 app.include_router(item_router)
 app.include_router(progress_router)
 

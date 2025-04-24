@@ -1,5 +1,12 @@
+import os
+import time
+import datetime
+import traceback
+from contextlib import redirect_stdout, redirect_stderr
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.types import ASGIApp
+
 from db.db import client
 
 class MongoConnectionPoolLoggerMiddleware(BaseHTTPMiddleware):
@@ -30,3 +37,33 @@ class MongoConnectionPoolLoggerMiddleware(BaseHTTPMiddleware):
             print(f"[Mongo Pool] Error accessing connection info: {e}")
 
         return await call_next(request)
+
+
+class FullOutputCaptureMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: ASGIApp, log_dir: str = "/Users/yang-eunseo/Desktop/projects/mongodb_practice/logs"):
+        super().__init__(app)
+        self.log_dir = log_dir
+        os.makedirs(self.log_dir, exist_ok=True)
+
+    async def dispatch(self, request: Request, call_next):
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"deploy_{timestamp}.log"
+        log_path = os.path.join(self.log_dir, log_filename)
+
+        start_time = time.time()
+
+        try:
+            with open(log_path, "w") as log_file, redirect_stdout(log_file), redirect_stderr(log_file):
+                print(f"=== {timestamp} | {request.method} {request.url.path} ===")
+                response = await call_next(request)
+                duration = time.time() - start_time
+                print(f"=== completed in {duration:.4f}s | status {response.status_code} ===")
+
+            return response
+
+        except Exception as e:
+            with open(log_path, "a") as log_file:
+                log_file.write(f"\n=== Exception ===\n")
+                traceback.print_exc(file=log_file)
+
+            raise e
